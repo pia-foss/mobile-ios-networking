@@ -16,7 +16,9 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "NWHttpConnection"),
+            name: "NWHttpConnection",
+            resources: [.process("Resources/")]
+        ),
         .testTarget(
             name: "NWHttpConnectionTests",
             dependencies: ["NWHttpConnection"]),

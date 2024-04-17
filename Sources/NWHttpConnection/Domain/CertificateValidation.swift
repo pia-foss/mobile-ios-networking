@@ -25,8 +25,9 @@ extension CertificateValidation: CertificateValidationType {
         switch self {
             /// This type of Cert pinning, creates a new trusted chain from our custom CA
         case .anchorCert(let cn):
-            let evaluation = validateWithAnchorCert(for: trust, cn: cn)
-            complete(evaluation)
+            let validation = validateWithAnchorCert(for: trust, cn: cn)
+            complete(validation)
+           
             /// This type of Cert pinning, checks against the hash of the certs under the trust object and
             /// matches them with the provided pinned ones
         case .pinnedCerts(let pinned):
@@ -55,8 +56,14 @@ extension CertificateValidation: CertificateValidationType {
             return false
         }
         
-        let certURL = Bundle.main.url(forResource: "PIA", withExtension: "der")
+#if SWIFT_PACKAGE
+            let bundle = Bundle.module
+#else
+            let bundle = Bundle(for: NWConnectionProvider.self)
+#endif
         
+        let certURL = bundle.url(forResource: "PIA", withExtension: "der")
+
         let certificateData = try? Data(contentsOf: certURL!) as CFData
         let caRef = SecCertificateCreateWithData(nil, certificateData!)
 
@@ -72,10 +79,12 @@ extension CertificateValidation: CertificateValidationType {
         
         //SET CA and SET TRUST OBJECT BETWEEN THE CA AND THE TRUST OBJECT FROM THE SERVER CERTIFICATE
         _ = SecTrustSetAnchorCertificates(trust, caArray)
-        var error: CFError?
-        let evaluation = SecTrustEvaluateWithError(trust, &error)
         
-        return evaluation
+            var error: CFError?
+            let evaluation = SecTrustEvaluateWithError(trust, &error)
+            
+            return evaluation
+        
     }
     
 }
