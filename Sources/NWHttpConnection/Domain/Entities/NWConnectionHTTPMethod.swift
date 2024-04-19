@@ -8,6 +8,4 @@ import Foundation
 
 public enum NWConnectionHTTPMethod: String {
     case get = "GET"
-    case post = "POST"
-    case delete = "DELETE"
 }

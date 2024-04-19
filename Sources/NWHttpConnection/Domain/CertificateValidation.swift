@@ -82,9 +82,8 @@ extension CertificateValidation: CertificateValidationType {
         
             var error: CFError?
             let evaluation = SecTrustEvaluateWithError(trust, &error)
-            
-            return evaluation
         
+            return evaluation
     }
     
 }
