@@ -14,26 +14,27 @@ public protocol CertificateValidationType {
 }
 
 public enum CertificateValidation {
-    case anchorCert(cn: String)
+    case anchor(certificate: SecCertificate, commonName: String?)
     case pinnedCerts(pinned: [String])
     case trustedCA
 }
 
 extension CertificateValidation: CertificateValidationType {
     
-   public func validate(metadata: sec_protocol_metadata_t, trust: sec_trust_t, complete: @escaping sec_protocol_verify_complete_t) {
+    public func validate(metadata: sec_protocol_metadata_t, trust: sec_trust_t, complete: @escaping sec_protocol_verify_complete_t) {
         switch self {
             /// This type of Cert pinning, creates a new trusted chain from our custom CA
-        case .anchorCert(let cn):
-            let validation = validateWithAnchorCert(for: trust, cn: cn)
+        case .anchor(let certificate, let commonName):
+            let validation = validateWithAnchorCert(for: trust, with: certificate, commonName: commonName)
             complete(validation)
-           
+            
             /// This type of Cert pinning, checks against the hash of the certs under the trust object and
             /// matches them with the provided pinned ones
         case .pinnedCerts(let pinned):
             let reqCertificates = getEncodedCertificates(from: trust)
             let trustedCerts = reqCertificates.filter { pinned.contains($0) }
             complete(!trustedCerts.isEmpty)
+            
         case .trustedCA:
             let trust = sec_trust_copy_ref(trust).takeRetainedValue()
             var error: CFError?
@@ -43,32 +44,21 @@ extension CertificateValidation: CertificateValidationType {
         
     }
     
-    private func validateWithAnchorCert(for trust: sec_trust_t, cn: String) -> Bool {
+    private func validateWithAnchorCert(for trust: sec_trust_t, with certificate: SecCertificate, commonName: String?) -> Bool {
         let serverTrust = sec_trust_copy_ref(trust).takeRetainedValue()
         
         //GET SERVER CERTIFICATE
         let serverCertificate = SecTrustGetCertificateAtIndex(serverTrust, 0)
         var serverCommonName: CFString!
-
+        
         SecCertificateCopyCommonName(serverCertificate!, &serverCommonName)
-    
-        if serverCommonName as String != cn {
+        
+        if let commonName, serverCommonName as String != commonName {
             return false
         }
         
-#if SWIFT_PACKAGE
-            let bundle = Bundle.module
-#else
-            let bundle = Bundle(for: NWConnectionProvider.self)
-#endif
-        
-        let certURL = bundle.url(forResource: "PIA", withExtension: "der")
-
-        let certificateData = try? Data(contentsOf: certURL!) as CFData
-        let caRef = SecCertificateCreateWithData(nil, certificateData!)
-
         //ARRAY OF CA CERTIFICATES
-        let caArray = [caRef] as CFArray
+        let caArray = [certificate] as CFArray
         
         //SET DEFAULT SSL POLICY
         let policy = SecPolicyCreateSSL(true, nil)
@@ -80,10 +70,10 @@ extension CertificateValidation: CertificateValidationType {
         //SET CA and SET TRUST OBJECT BETWEEN THE CA AND THE TRUST OBJECT FROM THE SERVER CERTIFICATE
         _ = SecTrustSetAnchorCertificates(trust, caArray)
         
-            var error: CFError?
-            let evaluation = SecTrustEvaluateWithError(trust, &error)
+        var error: CFError?
+        let evaluation = SecTrustEvaluateWithError(trust, &error)
         
-            return evaluation
+        return evaluation
     }
     
 }
@@ -97,7 +87,7 @@ extension CertificateValidation {
         }
         return Data(hash)
     }
-
+    
     private func getEncodedCertificates(from trust: sec_trust_t) -> [String] {
         let trust = sec_trust_copy_ref(trust).takeRetainedValue()
         let count = SecTrustGetCertificateCount(trust)
