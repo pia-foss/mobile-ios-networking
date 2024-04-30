@@ -21,6 +21,7 @@ struct NWHttpConnection: NWHttpConnectionType {
     
     private let url: URL
     private let method: NWConnectionHTTPMethod
+    private let headers: [String: String]?
     private let certificateValidation: CertificateValidationType
     private let nwDataResponseType: NWDataResponseType
     private let nwConnectionProvider: NWConnectionProviderType
@@ -35,19 +36,19 @@ struct NWHttpConnection: NWHttpConnectionType {
         "Accept": "*/*",
         "Connection": "close"
     ]
+    
     private let httpsPort: Int = 443
     
-    init(url: URL, method: NWConnectionHTTPMethod, certificateValidation: CertificateValidationType, dataResponseType: NWDataResponseType, nwConnectionProvider: NWConnectionProviderType, timeout: TimeInterval = 60, queue: DispatchQueue? = nil) {
+    init(url: URL, method: NWConnectionHTTPMethod, headers: [String: String]? = nil, certificateValidation: CertificateValidationType, dataResponseType: NWDataResponseType, nwConnectionProvider: NWConnectionProviderType, timeout: TimeInterval = 60, queue: DispatchQueue? = nil) {
         self.url = url
         self.method = method
+        self.headers = headers
         self.certificateValidation = certificateValidation
         self.nwDataResponseType = dataResponseType
         self.nwConnectionProvider = nwConnectionProvider
         self.timeout = timeout
         self.queue = queue ?? Self.defaultQueue
-        
     }
-    
     
     func connect(requestHandler: RequestHandler? = nil, completion: Completion? = nil) throws {
         
@@ -69,7 +70,7 @@ struct NWHttpConnection: NWHttpConnectionType {
             },
             self.queue
         )
-
+        
         
         let params = NWParameters(tls: tls, tcp: tcp)
         
@@ -123,7 +124,7 @@ internal extension NWHttpConnection {
         guard let validated = try? validate(url: url) else { return }
         let path = url.path.isEmpty ? "/" : url.path
         let query = url.query?.isEmpty ?? true ? "" : "?\(url.query!)"
-        let headers = normalize(headers: nil)
+        let headers = normalize(headers: headers)
         let content =
         "\(method.rawValue) \(path)\(query) HTTP/1.1\r\n" +
         "Host: \(validated.host)\r\n" +
@@ -176,7 +177,7 @@ internal extension NWHttpConnection {
                 if let data = data {
                     switch self.nwDataResponseType {
                     case .jsonData:
-                       let jsonData = getJSONData(from: data)
+                        let jsonData = getJSONData(from: data)
                         DispatchQueue.main.async {
                             handle?(nil, jsonData)
                         }
@@ -230,7 +231,7 @@ internal extension NWHttpConnection {
     func deadline(connection: NWConnectionType,
                   complete: Completion?) -> DispatchSourceTimer {
         let timer = DispatchSource.makeTimerSource(queue: Self.deadlineTimerQueue)
-
+        
         timer.schedule(deadline: .now() + timeout)
         timer.setEventHandler {
             connection.cancel()
