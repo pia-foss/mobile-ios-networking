@@ -1,0 +1,35 @@
+name: build_and_test
+on:
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: "${{ github.ref }}"
+  cancel-in-progress: true
+jobs:
+  macos:
+    name: build and test
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Setup Git credentials
+        run: |
+          git config --global url."https://${{ secrets.ORG_GITHUB_USERNAME }}:${{ secrets.ORG_GITHUB_TOKEN }}@github.com/".insteadOf "git@github.com:"
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          swift package resolve
+    
+      - name: Build
+        run: | 
+          set -o pipefail
+          xcodebuild -scheme 'NWHttpConnection' -configuration Debug -destination "platform=iOS Simulator,OS=latest,name=iPhone 15" build | xcpretty
+          exit ${PIPESTATUS[0]}
+      
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild -scheme 'NWHttpConnection' -destination "platform=iOS Simulator,OS=latest,name=iPhone 15" \
+            -skip-testing:NWHttpConnectionTests/NWHttpConnectionTests/test_connectionTimeOut \
+            test | xcpretty
+          exit ${PIPESTATUS[0]}
