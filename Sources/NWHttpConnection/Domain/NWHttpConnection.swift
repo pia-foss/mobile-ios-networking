@@ -22,6 +22,7 @@ struct NWHttpConnection: NWHttpConnectionType {
     private let url: URL
     private let method: NWConnectionHTTPMethod
     private let headers: [String: String]?
+    private let body: Data?
     private let certificateValidation: CertificateValidationType
     private let nwDataResponseType: NWDataResponseType
     private let nwConnectionProvider: NWConnectionProviderType
@@ -39,10 +40,11 @@ struct NWHttpConnection: NWHttpConnectionType {
     
     private let httpsPort: Int = 443
     
-    init(url: URL, method: NWConnectionHTTPMethod, headers: [String: String]? = nil, certificateValidation: CertificateValidationType, dataResponseType: NWDataResponseType, nwConnectionProvider: NWConnectionProviderType, timeout: TimeInterval = 60, queue: DispatchQueue? = nil) {
+    init(url: URL, method: NWConnectionHTTPMethod, headers: [String: String]? = nil, body: Data?, certificateValidation: CertificateValidationType, dataResponseType: NWDataResponseType, nwConnectionProvider: NWConnectionProviderType, timeout: TimeInterval = 60, queue: DispatchQueue? = nil) {
         self.url = url
         self.method = method
         self.headers = headers
+        self.body = body
         self.certificateValidation = certificateValidation
         self.nwDataResponseType = dataResponseType
         self.nwConnectionProvider = nwConnectionProvider
@@ -103,6 +105,9 @@ internal extension NWHttpConnection {
         if let headers = headers {
             normalized = normalized.merging(headers) { _, value in value }
         }
+        if let body {
+            normalized["Content-Length"] = "\(body.count)"
+        }
         return normalized
     }
     
@@ -120,16 +125,23 @@ internal extension NWHttpConnection {
         return Int(timeout)
     }
     
-    func sendConnectionForGetRequest(connection: NWConnectionType, handle: RequestHandler?) {
+    func sendConnectionRequest(connection: NWConnectionType, handle: RequestHandler?) {
         guard let validated = try? validate(url: url) else { return }
+        
         let path = url.path.isEmpty ? "/" : url.path
         let query = url.query?.isEmpty ?? true ? "" : "?\(url.query!)"
         let headers = normalize(headers: headers)
-        let content =
+        
+        var content =
         "\(method.rawValue) \(path)\(query) HTTP/1.1\r\n" +
         "Host: \(validated.host)\r\n" +
         headers.map { "\($0.key): \($0.value)\r\n" }.joined() +
         "\r\n"
+        
+        
+        if let body, let json = String(data: body, encoding: .utf8) {
+            content.append(json)
+        }
         
         connection.send(
             content: content.data(using: .ascii),
@@ -144,15 +156,6 @@ internal extension NWHttpConnection {
                 }
             )
         )
-    }
-    
-    func send(connection: NWConnectionType,
-              handle: RequestHandler?) {
-        switch self.method {
-        case .get:
-            sendConnectionForGetRequest(connection: connection, handle: handle)
-            // TODO: Extend with additional http methods as needed
-        }
     }
     
     func getJSONData(from data: Data) -> Data? {
@@ -217,7 +220,7 @@ internal extension NWHttpConnection {
         case .preparing:
             break
         case .ready:
-            send(connection: connection, handle: handle)
+            sendConnectionRequest(connection: connection, handle: handle)
         case .setup:
             break
         case .waiting(let error):
