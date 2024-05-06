@@ -8,8 +8,14 @@
 import Foundation
 
 public class NWHttpConnectionFactory {
-    public static func makeNWHttpConnection(with configuration: NWConnectionConfiguration) -> NWHttpConnectionType {        
-        return NWHttpConnection(url: configuration.url, method: configuration.method, certificateValidation: configuration.certificateValidation, dataResponseType: configuration.dataResponseType, nwConnectionProvider: Self.makeNWConnectionProvider())
+    
+    public static func makeNWHttpConnection(with configuration: NWConnectionConfiguration) -> NWHttpConnectionType {
+        return NWHttpConnection(url: configuration.url,
+                                method: configuration.method,
+                                headers: configuration.headers,
+                                certificateValidation: configuration.certificateValidation,
+                                dataResponseType: configuration.dataResponseType,
+                                nwConnectionProvider: Self.makeNWConnectionProvider())
     }
     
 }
