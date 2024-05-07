@@ -13,6 +13,7 @@ public class NWHttpConnectionFactory {
         return NWHttpConnection(url: configuration.url,
                                 method: configuration.method,
                                 headers: configuration.headers,
+                                body: configuration.body,
                                 certificateValidation: configuration.certificateValidation,
                                 dataResponseType: configuration.dataResponseType,
                                 nwConnectionProvider: Self.makeNWConnectionProvider())

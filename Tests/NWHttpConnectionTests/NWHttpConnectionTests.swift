@@ -8,6 +8,7 @@ class NWHttpConnectionTests: XCTestCase {
     class Fixture {
         var url: URL = URL(string: "https://123.334.987/api")!
         var method: NWConnectionHTTPMethod = .get
+        var body: Data?
         var certificateValidationMock = CertificateValidationMock()
         var nwConnectionProviderMock: NWConnectionProviderMock!
         var nwConnectionTypeMock: NWConnectionTypeMock!
@@ -48,7 +49,7 @@ class NWHttpConnectionTests: XCTestCase {
     }
     
     private func instantiateSut(with timeout: TimeInterval = 60) {
-        sut = NWHttpConnection(url: fixture.url, method: fixture.method, certificateValidation: fixture.certificateValidationMock, dataResponseType: fixture.dataResponseType, nwConnectionProvider: fixture.nwConnectionProviderMock, timeout: timeout)
+        sut = NWHttpConnection(url: fixture.url, method: fixture.method, body: fixture.body, certificateValidation: fixture.certificateValidationMock, dataResponseType: fixture.dataResponseType, nwConnectionProvider: fixture.nwConnectionProviderMock, timeout: timeout)
     }
     
     func test_startConnectionWhenStateIsReady() throws {
