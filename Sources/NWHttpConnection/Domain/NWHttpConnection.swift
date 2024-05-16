@@ -224,7 +224,7 @@ internal extension NWHttpConnection {
         case .setup:
             break
         case .waiting(let error):
-            handle?(.wait(error), nil)
+            guard case .posix(let posixError) = error, posixError == .ENETDOWN  else { return }
             connection.cancel()
         default:
             break

@@ -122,6 +122,7 @@ class NWHttpConnectionTests: XCTestCase {
     func test_startConnectionWhenStateIsWaiting() throws {
         // GIVEN that the NWHttpConnection is instantiated
         instantiateSut()
+        
         // THEN the NWConection is NOT called yet to send or receive any Data
         XCTAssertFalse(fixture.nwConnectionTypeMock.sendCalled)
         XCTAssertFalse(fixture.nwConnectionTypeMock.receiveCalled)
@@ -135,16 +136,33 @@ class NWHttpConnectionTests: XCTestCase {
         // AND WHEN the NWConnection state is 'waiting'
         fixture.nwConnectionTypeMock.stateUpdateHandler?(NWConnection.State.waiting(NWError.tls(1)))
         
-        // THEN a Wait error is received
-        XCTAssertNotNil(fixture.receivedError)
-        XCTAssertEqual(fixture.receivedError, NWHttpConnectionError.wait(NWError.tls(1)))
+        // AND the content remains NOT sent
+        XCTAssertFalse(fixture.nwConnectionTypeMock.sendCalled)
+    }
+    
+    func test_startConnectionWhenStateIsWaitingWithoutConnection() throws {
+        // GIVEN that the NWHttpConnection is instantiated
+        instantiateSut()
+        
+        // THEN the NWConection is NOT called yet to send or receive any Data
+        XCTAssertFalse(fixture.nwConnectionTypeMock.sendCalled)
+        XCTAssertFalse(fixture.nwConnectionTypeMock.receiveCalled)
+        
+        // AND When calling connect
+        try sut.connect(requestHandler: fixture.requestHandler, completion: fixture.requestCompletion)
+        
+        // THEN the NWConnection is called to receive Data
+        XCTAssertTrue(fixture.nwConnectionTypeMock.receiveCalled)
+        
+        // AND WHEN the NWConnection state is 'waiting'
+        // AND WHEN there is not a viable network
+        fixture.nwConnectionTypeMock.stateUpdateHandler?(NWConnection.State.waiting(NWError.posix(.ENETDOWN)))
         
         // AND the content remains NOT sent
         XCTAssertFalse(fixture.nwConnectionTypeMock.sendCalled)
         
-        // AND the connection gets cancelled
+        // THEN the connection gets cancelled
         XCTAssertTrue(fixture.nwConnectionTypeMock.cancelCalled)
-        
     }
     
     func test_startConnectionWhenStateIsFailed() throws {
