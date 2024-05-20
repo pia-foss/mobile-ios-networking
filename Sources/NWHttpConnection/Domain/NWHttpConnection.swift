@@ -144,7 +144,7 @@ internal extension NWHttpConnection {
         }
         
         connection.send(
-            content: content.data(using: .ascii),
+            content: content.data(using: .utf8),
             contentContext: .defaultMessage,
             isComplete: true,
             completion: NWConnection.SendCompletion.contentProcessed(
