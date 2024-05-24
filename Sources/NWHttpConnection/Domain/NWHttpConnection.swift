@@ -176,7 +176,7 @@ internal extension NWHttpConnection {
         
         let jsonStringComponents = utfDataString.split(separator: "\r\n")
         let jsonString = jsonStringComponents.filter {
-            $0.starts(with: "{\"") && $0.contains("}")
+            $0.starts(with: "{") && $0.contains("}")
         }.first
         
         guard let jsonString else { return nil }
