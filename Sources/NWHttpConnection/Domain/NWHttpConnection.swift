@@ -171,37 +171,54 @@ internal extension NWHttpConnection {
     }
     
     func receive(connection: NWConnectionType,
+                 accumulatedData: Data? = nil,
                  handle: RequestHandler?) {
         connection.receive(
             minimumIncompleteLength: 1,
             maximumLength: Int(UInt16.max),
-            completion: { (data, _, isComplete, error) in
+            completion: { (newData, _, isComplete, error) in
                 
-                if let data = data {
-                    switch self.nwDataResponseType {
-                    case .jsonData:
-                        let jsonData = getJSONData(from: data)
-                        DispatchQueue.main.async {
-                            handle?(nil, jsonData)
-                        }
-                    case .rawData:
-                        DispatchQueue.main.async {
-                            handle?(nil, data)
-                        }
+                // Accumulate the newly received data with previously received data
+                let updatedAccumulatedData: Data? = {
+                    if let newData, let accumulatedData {
+                        return accumulatedData + newData
+                    } else if let newData {
+                        return newData
+                    } else {
+                        return accumulatedData
                     }
-                }
+                }()
                 
                 
                 if isComplete {
-                    connection.cancel()
+                    self.processCompleted(with: updatedAccumulatedData, connection: connection, handle: handle)
                 } else if let error = error {
                     handle?(.receive(error), nil)
                 } else {
                     self.receive(connection: connection,
+                                 accumulatedData: updatedAccumulatedData,
                                  handle: handle)
                 }
             }
         )
+    }
+    
+    private func processCompleted(with data: Data?, connection: NWConnectionType, handle: RequestHandler?) {
+        if let data {
+            switch self.nwDataResponseType {
+            case .jsonData:
+                let jsonData = getJSONData(from: data)
+                DispatchQueue.main.async {
+                    handle?(nil, jsonData)
+                }
+            case .rawData:
+                DispatchQueue.main.async {
+                    handle?(nil, data)
+                }
+            }
+        }
+        
+        connection.cancel()
     }
     
     func updated(connection: NWConnectionType,
