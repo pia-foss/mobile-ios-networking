@@ -159,11 +159,16 @@ internal extension NWHttpConnection {
     }
     
     func getJSONData(from data: Data) -> Data? {
-        let asciiDataString = String(data: data, encoding: .ascii)
-        guard let asciiDataString else { return nil }
-        let containsJSON = asciiDataString.contains("Content-Type: application/json")
+        let utfDataString = String(data: data, encoding: .utf8)
+        guard let utfDataString else { return nil }
+        let containsJSON = utfDataString.contains("Content-Type: application/json")
+    
         guard containsJSON else { return nil }
-        let jsonString = asciiDataString.split(separator: "\r\n").last
+        
+        let jsonStringComponents = utfDataString.split(separator: "\r\n")
+        let jsonString = jsonStringComponents.filter {
+            $0.starts(with: "{\"") && $0.contains("}")
+        }.first
         
         guard let jsonString else { return nil }
         
