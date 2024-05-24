@@ -11,7 +11,7 @@ import Network
 import CommonCrypto
 
 public protocol NWHttpConnectionType {
-    typealias RequestHandler = (NWHttpConnectionError?, Data?) -> Void
+    typealias RequestHandler = (NWHttpConnectionError?, NWHttpConnectionDataResponse?) -> Void
     typealias Completion = () -> Void
     
     func connect(requestHandler: NWHttpConnectionType.RequestHandler?, completion: NWHttpConnectionType.Completion?) throws
@@ -158,6 +158,15 @@ internal extension NWHttpConnection {
         )
     }
     
+    func getStatusCode(from data: Data) -> Int? {
+        guard let utfString = String(data: data, encoding: .utf8),
+              utfString.contains("HTTP"),
+              let substring = utfString.split(separator: " ")[safeAt: 1] else { return nil }
+        
+        return Int(String(substring))
+    }
+    
+    
     func getJSONData(from data: Data) -> Data? {
         let utfDataString = String(data: data, encoding: .utf8)
         guard let utfDataString else { return nil }
@@ -210,16 +219,9 @@ internal extension NWHttpConnection {
     
     private func processCompleted(with data: Data?, connection: NWConnectionType, handle: RequestHandler?) {
         if let data {
-            switch self.nwDataResponseType {
-            case .jsonData:
-                let jsonData = getJSONData(from: data)
-                DispatchQueue.main.async {
-                    handle?(nil, jsonData)
-                }
-            case .rawData:
-                DispatchQueue.main.async {
-                    handle?(nil, data)
-                }
+            let responseData = makeNWHttpConnectionDataResponse(from: data)
+            DispatchQueue.main.async {
+                handle?(nil, responseData)
             }
         }
         
@@ -265,6 +267,30 @@ internal extension NWHttpConnection {
         return timer
     }
     
+}
+
+
+// MARK: - Response parsing
+
+private extension NWHttpConnection {
+    func makeNWHttpConnectionDataResponse(from data: Data?) -> NWHttpConnectionDataResponse {
+        
+        var statusCode: Int?
+        var responseData: Data?
+        
+        if let data {
+            statusCode = getStatusCode(from: data)
+            switch self.nwDataResponseType {
+            case .jsonData:
+                responseData = getJSONData(from: data)
+            case .rawData:
+                responseData = data
+            }
+        }
+        
+        return NWHttpConnectionDataResponse(statusCode: statusCode, dataFormat: nwDataResponseType, data: responseData)
+        
+    }
 }
 
 
