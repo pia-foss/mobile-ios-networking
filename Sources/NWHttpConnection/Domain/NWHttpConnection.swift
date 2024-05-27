@@ -220,9 +220,7 @@ internal extension NWHttpConnection {
     private func processCompleted(with data: Data?, connection: NWConnectionType, handle: RequestHandler?) {
         if let data {
             let responseData = makeNWHttpConnectionDataResponse(from: data)
-            DispatchQueue.main.async {
-                handle?(nil, responseData)
-            }
+            handle?(nil, responseData)
         }
         
         connection.cancel()
