@@ -11,7 +11,7 @@ import Network
 import CommonCrypto
 
 public protocol NWHttpConnectionType {
-    typealias RequestHandler = (NWHttpConnectionError?, NWHttpConnectionDataResponse?) -> Void
+    typealias RequestHandler = (NWHttpConnectionError?, NWHttpConnectionDataResponseType?) -> Void
     typealias Completion = () -> Void
     
     func connect(requestHandler: NWHttpConnectionType.RequestHandler?, completion: NWHttpConnectionType.Completion?) throws

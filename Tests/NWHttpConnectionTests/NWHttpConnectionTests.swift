@@ -13,7 +13,7 @@ class NWHttpConnectionTests: XCTestCase {
         var nwConnectionProviderMock: NWConnectionProviderMock!
         var nwConnectionTypeMock: NWConnectionTypeMock!
         var dataResponseType: NWDataResponseType = .jsonData
-        var receivedData: NWHttpConnectionDataResponse?
+        var receivedData: NWHttpConnectionDataResponseType?
         var receivedError: NWHttpConnectionError?
         var requestHandler: NWHttpConnection.RequestHandler?
         var requestCompletionCalled = false
