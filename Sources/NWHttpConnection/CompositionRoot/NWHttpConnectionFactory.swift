@@ -16,7 +16,9 @@ public class NWHttpConnectionFactory {
                                 body: configuration.body,
                                 certificateValidation: configuration.certificateValidation,
                                 dataResponseType: configuration.dataResponseType,
-                                nwConnectionProvider: Self.makeNWConnectionProvider())
+                                nwConnectionProvider: Self.makeNWConnectionProvider(),
+                                timeout: configuration.timeout,
+                                queue: configuration.queue)
     }
     
 }
