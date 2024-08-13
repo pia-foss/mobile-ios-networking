@@ -53,6 +53,7 @@ struct NWHttpConnection: NWHttpConnectionType {
     }
     
     func connect(requestHandler: RequestHandler? = nil, completion: Completion? = nil) throws {
+        NWHttpConnectionLogger.log("method: connect - url: \(url)")
         
         let (validatedHost, _) = try validate(url: url)
         let host = NWEndpoint.Host(validatedHost)
@@ -143,6 +144,8 @@ internal extension NWHttpConnection {
             content.append(json)
         }
         
+        NWHttpConnectionLogger.log("method: sendConnectionRequest - content: \(content)")
+        
         connection.send(
             content: content.data(using: .utf8),
             contentContext: .defaultMessage,
@@ -150,8 +153,12 @@ internal extension NWHttpConnection {
             completion: NWConnection.SendCompletion.contentProcessed(
                 { (error) in
                     if let error = error {
+                        NWHttpConnectionLogger.error("callback: connection.send completion", error: error)
                         handle?(.send(error), nil)
+                        NWHttpConnectionLogger.log("callback: connection.send completion - canceling connection...")
                         connection.cancel()
+                    } else {
+                        NWHttpConnectionLogger.log("callback: connection.send completion - no error")
                     }
                 }
             )
@@ -187,6 +194,9 @@ internal extension NWHttpConnection {
     func receive(connection: NWConnectionType,
                  accumulatedData: Data? = nil,
                  handle: RequestHandler?) {
+        
+        NWHttpConnectionLogger.log("method: receive")
+        
         connection.receive(
             minimumIncompleteLength: 1,
             maximumLength: Int(UInt16.max),
@@ -203,10 +213,16 @@ internal extension NWHttpConnection {
                     }
                 }()
                 
+                if let updatedAccumulatedData {
+                    NWHttpConnectionLogger.log("callback: connection.receive - data: \(String(data: updatedAccumulatedData, encoding: .utf8))")
+                } else {
+                    NWHttpConnectionLogger.log("callback: connection.receive - data: empty")
+                }
                 
                 if isComplete {
                     self.processCompleted(with: updatedAccumulatedData, connection: connection, handle: handle)
                 } else if let error = error {
+                    NWHttpConnectionLogger.error("callback: connection.receive completion", error: error)
                     handle?(.receive(error), nil)
                 } else {
                     self.receive(connection: connection,
@@ -218,11 +234,14 @@ internal extension NWHttpConnection {
     }
     
     private func processCompleted(with data: Data?, connection: NWConnectionType, handle: RequestHandler?) {
+        NWHttpConnectionLogger.log("method: processCompleted")
+        
         if let data {
             let responseData = makeNWHttpConnectionDataResponse(from: data)
             handle?(nil, responseData)
         }
         
+        NWHttpConnectionLogger.log("method: processCompleted - canceling connection...")
         connection.cancel()
     }
     
@@ -234,21 +253,29 @@ internal extension NWHttpConnection {
         
         switch state {
         case .cancelled:
+            NWHttpConnectionLogger.log("method: updated - state: cancelled")
             timer.cancel()
             complete?()
         case .failed(let error):
+            NWHttpConnectionLogger.error("method: updated - state: failed", error: error)
             handle?(.connection(error), nil)
+            NWHttpConnectionLogger.log("method: updated - canceling connection...")
             connection.cancel()
         case .preparing:
+            NWHttpConnectionLogger.log("method: updated - state: preparing")
             break
         case .ready:
+            NWHttpConnectionLogger.log("method: updated - state: ready")
             sendConnectionRequest(connection: connection, handle: handle)
         case .setup:
             break
         case .waiting(let error):
+            NWHttpConnectionLogger.error("method: updated - state: waiting", error: error)
             guard case .posix(let posixError) = error, posixError == .ENETDOWN  else { return }
+            NWHttpConnectionLogger.log("method: updated - canceling connection...")
             connection.cancel()
         default:
+            NWHttpConnectionLogger.log("method: updated - state: other")
             break
         }
     }
@@ -257,8 +284,11 @@ internal extension NWHttpConnection {
                   complete: Completion?) -> DispatchSourceTimer {
         let timer = DispatchSource.makeTimerSource(queue: Self.deadlineTimerQueue)
         
+        NWHttpConnectionLogger.log("method: deadline - timeout \(timeout)")
+        
         timer.schedule(deadline: .now() + timeout)
         timer.setEventHandler {
+            NWHttpConnectionLogger.log("method: deadline - canceling connection...")
             connection.cancel()
         }
         timer.resume()
@@ -277,6 +307,8 @@ private extension NWHttpConnection {
         var responseData: Data?
         
         if let data {
+            NWHttpConnectionLogger.log("method: makeNWHttpConnectionDataResponse data: \(String(data: data, encoding: .utf8))")
+            
             statusCode = getStatusCode(from: data)
             switch self.nwDataResponseType {
             case .jsonData:
