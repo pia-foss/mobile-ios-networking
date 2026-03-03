@@ -155,14 +155,15 @@ class NWHttpConnectionTests: XCTestCase {
         XCTAssertTrue(fixture.nwConnectionTypeMock.receiveCalled)
         
         // AND WHEN the NWConnection state is 'waiting'
-        // AND WHEN there is not a viable network
+        // AND WHEN there is not a viable network (e.g. ENETDOWN during cellular radio wake-up)
         fixture.nwConnectionTypeMock.stateUpdateHandler?(NWConnection.State.waiting(NWError.posix(.ENETDOWN)))
         
         // AND the content remains NOT sent
         XCTAssertFalse(fixture.nwConnectionTypeMock.sendCalled)
         
-        // THEN the connection gets cancelled
-        XCTAssertTrue(fixture.nwConnectionTypeMock.cancelCalled)
+        // THEN the connection is NOT cancelled — NWConnection self-recovers once the path is ready.
+        // The deadline timer provides the hard timeout if the network never becomes available.
+        XCTAssertFalse(fixture.nwConnectionTypeMock.cancelCalled)
     }
     
     func test_startConnectionWhenStateIsFailed() throws {
