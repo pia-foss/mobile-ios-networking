@@ -245,9 +245,12 @@ internal extension NWHttpConnection {
             sendConnectionRequest(connection: connection, handle: handle)
         case .setup:
             break
-        case .waiting(let error):
-            guard case .posix(let posixError) = error, posixError == .ENETDOWN  else { return }
-            connection.cancel()
+        case .waiting:
+            // Let NWConnection wait for the network to become available.
+            // ENETDOWN is transient on cellular (radio wake-up) and NWConnection
+            // will automatically proceed once the path is ready. The deadline timer
+            // already provides a hard timeout to prevent waiting indefinitely.
+            break
         default:
             break
         }
