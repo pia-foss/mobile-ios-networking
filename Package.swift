@@ -7,7 +7,7 @@ let package = Package(
     name: "NWHttpConnection",
     platforms: [
         .tvOS(.v17),
-        .iOS(.v12)
+        .iOS(.v15)
     ],
     products: [
         .library(
@@ -16,8 +16,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "NWHttpConnection",
-            resources: [.process("Resources/")]
+            name: "NWHttpConnection"
         ),
         .testTarget(
             name: "NWHttpConnectionTests",
